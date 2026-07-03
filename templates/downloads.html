@@ -41,13 +41,13 @@
                 <thead class="table-light">
                     <tr>
                         <th style="width: 80px;">海报</th>
-                        <th>影视信息</th>
-                        <th style="width: 100px;">画质</th>
-                        <th style="width: 150px;">进度</th>
-                        <th style="width: 140px;">大小</th>
-                        <th style="width: 120px;">速度</th>
+                        <th style="max-width: 200px;">影视信息</th>
+                        <th style="width: 80px;">画质</th>
+                        <th style="width: 140px;">进度</th>
+                        <th style="width: 160px;">大小</th>
+                        <th style="width: 140px;">速度</th>
                         <th style="width: 120px;">添加时间</th>
-                        <th style="width: 280px; white-space: nowrap;">操作</th>
+                        <th style="width: 220px; white-space: nowrap;">操作</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -133,7 +133,7 @@
                         <td>
                             <small>{{ download.added_at }}</small>
                         </td>
-                        <td class="col-actions" style="white-space: nowrap;">
+                        <td class="col-actions" style="width: 220px; white-space: nowrap;">
                             {% if download.is_active %}
                                 {% if download.qb_status in ('pausedDL', 'pausedUP', 'stoppedDL', 'stoppedUP') %}
                                 <button class="btn btn-sm btn-success resume-btn" data-hash="{{ download.torrent_hash }}" title="恢复">
