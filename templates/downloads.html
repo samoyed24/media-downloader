@@ -44,6 +44,7 @@
                         <th>影视信息</th>
                         <th style="width: 100px;">画质</th>
                         <th style="width: 150px;">进度</th>
+                        <th style="width: 140px;">大小</th>
                         <th style="width: 120px;">速度</th>
                         <th style="width: 120px;">添加时间</th>
                         <th style="width: 280px; white-space: nowrap;">操作</th>
@@ -105,6 +106,18 @@
                                 {% else %}{{ download.status }}
                                 {% endif %}
                             </span>
+                            {% endif %}
+                        </td>
+                        <td class="col-size">
+                            {% if download.is_active and download.size > 0 %}
+                            <small>
+                                {{ download.downloaded | filesizeformat }}<br>
+                                <span class="text-muted">/ {{ download.size | filesizeformat }}</span>
+                            </small>
+                            {% elif download.file_size %}
+                            <small class="text-muted">{{ download.file_size }}</small>
+                            {% else %}
+                            <small class="text-muted">-</small>
                             {% endif %}
                         </td>
                         <td class="col-speed">
@@ -243,6 +256,7 @@
                     row.dataset.active = item.is_active ? 'true' : 'false';
 
                     const progressCell = row.querySelector('.col-progress');
+                    const sizeCell = row.querySelector('.col-size');
                     const speedCell = row.querySelector('.col-speed');
                     const actionsCell = row.querySelector('.col-actions');
                     if (!progressCell || !speedCell) return;
@@ -257,6 +271,13 @@
                                 <div class="progress-bar ${barClass}" role="progressbar"
                                     style="width: ${item.progress}%"></div>
                             </div>`;
+                        const sizeCell = row.querySelector('.col-size');
+                        if (sizeCell && item.size > 0) {
+                            sizeCell.innerHTML = `<small>
+                                ${formatSize(item.downloaded)}<br>
+                                <span class="text-muted">/ ${formatSize(item.size)}</span>
+                            </small>`;
+                        }
                         speedCell.innerHTML = `<small>
                             ↓<span class="dl-speed">${formatSize(item.dlspeed)}</span>/s<br>
                             ↑<span class="up-speed">${formatSize(item.upspeed)}</span>/s
@@ -273,6 +294,11 @@
                         };
                         const [cls, label] = statusMap[item.status] || ['bg-secondary', item.status];
                         progressCell.innerHTML = `<span class="badge status-badge ${cls}">${label}</span>`;
+                        if (sizeCell) {
+                            sizeCell.innerHTML = item.file_size
+                                ? `<small class="text-muted">${item.file_size}</small>`
+                                : '<small class="text-muted">-</small>';
+                        }
                         speedCell.innerHTML = '<small class="text-muted">-</small>';
                         if (actionsCell) {
                             if (item.status === 'completed' && !item.jellyfin_synced) {

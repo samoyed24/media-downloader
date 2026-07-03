@@ -154,6 +154,8 @@ def _merge_with_qbittorrent(records):
                 'dlspeed': qb_data['dlspeed'],
                 'upspeed': qb_data['upspeed'],
                 'eta': qb_data['eta'],
+                'size': qb_data['size'],
+                'downloaded': qb_data['downloaded'],
                 'qb_status': qb_data['state'],
                 'is_active': True,
             })
@@ -171,6 +173,8 @@ def _merge_with_qbittorrent(records):
                 'dlspeed': 0,
                 'upspeed': 0,
                 'eta': 0,
+                'size': 0,
+                'downloaded': 0,
                 'qb_status': record['status'],
                 'is_active': False,
             })

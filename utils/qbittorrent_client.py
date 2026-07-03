@@ -54,6 +54,7 @@ class QBittorrentClient:
                 'hash': t.hash,
                 'name': t.name,
                 'size': t.size,
+                'downloaded': int(t.size * t.progress),
                 'progress': t.progress * 100,
                 'dlspeed': t.dlspeed,
                 'upspeed': t.upspeed,
