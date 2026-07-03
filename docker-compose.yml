@@ -1,0 +1,60 @@
+services:
+  flask-app:
+    build: .
+    container_name: mukaku-web
+    ports:
+      - "5001:5000"
+    environment:
+      # qBittorrent 配置
+      - QB_HOST=http://qbittorrent:8080
+      - QB_USERNAME=admin
+      - QB_PASSWORD=QyFd3vWvL
+      # Jellyfin 配置
+      - JELLYFIN_URL=http://jellyfin:8096
+      - JELLYFIN_USERNAME=admin
+      - JELLYFIN_PASSWORD=admin123
+      # 路径配置（容器内路径）
+      - DOWNLOAD_DIR=/downloads
+      - MEDIA_DIR=/media
+      - MOVIE_LIBRARY_PATH=/media/movies
+      - TV_LIBRARY_PATH=/media/tvshows
+    volumes:
+      - ./downloads:/downloads
+      - ./data:/app/data
+      - ./media:/media
+    depends_on:
+      - qbittorrent
+      - jellyfin
+    restart: unless-stopped
+
+  qbittorrent:
+    image: lscr.io/linuxserver/qbittorrent:latest
+    container_name: qbittorrent
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Asia/Shanghai
+      - WEBUI_PORT=8080
+      # qBittorrent Web UI 登录凭据（首次启动时使用）
+      - WEBUI_USERNAME=admin
+      - WEBUI_PASSWORD=QyFd3vWvL
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./qbittorrent_config:/config
+      - ./downloads:/downloads
+    restart: unless-stopped
+
+  jellyfin:
+    image: jellyfin/jellyfin:latest
+    container_name: jellyfin
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Asia/Shanghai
+    ports:
+      - "8096:8096"
+    volumes:
+      - ./jellyfin_config:/config
+      - ./media:/media
+    restart: unless-stopped

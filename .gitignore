@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+env/
+venv/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Docker
+.docker/
+
+# Runtime data
+downloads/
+qbittorrent_config/
+jellyfin_config/
+media/
+data/
+*.db
+
+# Claude
+.claude/
+
+# OS
+.DS_Store
+Thumbs.db

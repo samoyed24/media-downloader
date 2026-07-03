@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+
+{% block title %}搜索 - 影视磁力链接搜索{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mb-4">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body">
+                <h4 class="card-title mb-3">搜索影视</h4>
+                <form action="/search" method="get" id="searchForm">
+                    <div class="input-group input-group-lg">
+                        <input type="text" class="form-control" name="q" placeholder="输入影视名称..."
+                               value="{{ query }}" autofocus required>
+                        <button class="btn btn-primary" type="submit" id="searchBtn">
+                            <span id="btnText">搜索</span>
+                            <span id="btnSpinner" class="d-none">
+                                <span class="spinner-border spinner-border-sm" role="status"></span>
+                                搜索中...
+                            </span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if results is not none %}
+    {% if results|length > 0 %}
+        <div class="card">
+            <div class="card-header">
+                <strong>搜索结果</strong> - 找到 {{ total }} 条记录
+                {% if query %}（关键词: "{{ query }}"）{% endif %}
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 60px;">序号</th>
+                                <th style="width: 100px;">海报</th>
+                                <th>片名</th>
+                                <th style="width: 80px;">年份</th>
+                                <th style="width: 80px;">评分</th>
+                                <th style="width: 120px;">导演</th>
+                                <th style="width: 180px;">主演</th>
+                                <th style="width: 100px;">类型</th>
+                                <th style="width: 80px;">地区</th>
+                                <th style="width: 80px;">集数</th>
+                                <th style="width: 100px;">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for video in results %}
+                            <tr>
+                                <td>{{ (page - 1) * per_page + loop.index }}</td>
+                                <td>
+                                    {% if video.image %}
+                                        <img src="/image-proxy?url={{ video.image|urlencode }}" alt="{{ video.title }}"
+                                             style="width: 80px; height: auto; border-radius: 4px;"
+                                             onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2280%22 height=%22120%22%3E%3Crect width=%2280%22 height=%22120%22 fill=%22%23ddd%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 fill=%22%23999%22%3E无图%3C/text%3E%3C/svg%3E'">
+                                    {% else %}
+                                        <div style="width: 80px; height: 120px; background: #ddd; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: #999; font-size: 12px;">
+                                            无图
+                                        </div>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <strong>{{ video.title }}</strong>
+                                    {% if video.get('new') %}
+                                        <span class="badge bg-success ms-2">NEW</span>
+                                    {% endif %}
+                                    {% if video.alias %}
+                                        <br><small class="text-muted">{{ video.alias[:50] }}{% if video.alias|length > 50 %}...{% endif %}</small>
+                                    {% endif %}
+                                </td>
+                                <td>{{ video.years or '-' }}</td>
+                                <td>
+                                    {% if video.doub_score %}
+                                        <span class="text-warning">{{ video.doub_score }}</span>
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if video.director %}
+                                        <small>{{ video.director[:20] }}{% if video.director|length > 20 %}...{% endif %}</small>
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if video.performer %}
+                                        <small>{{ video.performer[:30] }}{% if video.performer|length > 30 %}...{% endif %}</small>
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if video.get('class') %}
+                                        <small>{{ video.get('class') }}</small>
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if video.production_area %}
+                                        <small>{{ video.production_area }}</small>
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                                <td>{{ video.episodes or '-' }}</td>
+                                <td>
+                                    <a href="/detail/{{ video.doub_id or video.id }}"
+                                       class="btn btn-sm btn-outline-primary">
+                                        查看详情
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    {% else %}
+        <div class="alert alert-info text-center">
+            没有找到相关结果，请尝试其他关键词
+        </div>
+    {% endif %}
+
+    {% from "macros.html" import pagination %}
+    {{ pagination(page, total, per_page, 'search', {'q': query}) }}
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.getElementById('searchForm').addEventListener('submit', function() {
+        document.getElementById('btnText').classList.add('d-none');
+        document.getElementById('btnSpinner').classList.remove('d-none');
+        document.getElementById('searchBtn').disabled = true;
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,20 @@
+{% macro pagination(page, total, per_page, endpoint, extra_params={}) %}
+{% set total_pages = (total + per_page - 1) // per_page %}
+{% if total_pages > 1 %}
+<nav aria-label="分页导航" class="mt-3">
+    <ul class="pagination justify-content-center">
+        <li class="page-item {% if page <= 1 %}disabled{% endif %}">
+            <a class="page-link" href="{{ url_for(endpoint, page=page-1, **extra_params) }}">上一页</a>
+        </li>
+        {% for p in range(1, total_pages + 1) %}
+        <li class="page-item {% if p == page %}active{% endif %}">
+            <a class="page-link" href="{{ url_for(endpoint, page=p, **extra_params) }}">{{ p }}</a>
+        </li>
+        {% endfor %}
+        <li class="page-item {% if page >= total_pages %}disabled{% endif %}">
+            <a class="page-link" href="{{ url_for(endpoint, page=page+1, **extra_params) }}">下一页</a>
+        </li>
+    </ul>
+</nav>
+{% endif %}
+{% endmacro %}

@@ -1,0 +1,264 @@
+{% extends "base.html" %}
+
+{% block title %}{{ magnet_data.title }} - 磁力链接{% endblock %}
+
+{% block content %}
+<div class="mb-3">
+    <a href="/" class="btn btn-outline-secondary btn-sm">← 返回搜索</a>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header bg-primary text-white">
+        <h4 class="mb-0">
+            {{ magnet_data.title }}
+            {% if magnet_data.year %}
+                <small class="text-white-50">({{ magnet_data.year }})</small>
+            {% endif %}
+        </h4>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            {% if magnet_data.image %}
+            <div class="col-md-3 mb-3">
+                <img src="/image-proxy?url={{ magnet_data.image|urlencode }}" alt="{{ magnet_data.title }}"
+                     class="img-fluid rounded"
+                     style="max-width: 200px;"
+                     onerror="this.style.display='none'">
+            </div>
+            {% endif %}
+            <div class="{{ 'col-md-9' if magnet_data.image else 'col-12' }}">
+                <p class="mb-0">
+                    <strong>ID:</strong> {{ magnet_data.doub_id }}
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if magnet_data.quality_groups %}
+    <div class="accordion" id="qualityAccordion">
+        {% for quality, episodes in magnet_data.quality_groups.items() %}
+        <div class="accordion-item">
+            <h2 class="accordion-header" id="heading{{ loop.index }}">
+                <button class="accordion-button {% if not loop.first %}collapsed{% endif %}"
+                        type="button"
+                        data-bs-toggle="collapse"
+                        data-bs-target="#collapse{{ loop.index }}"
+                        aria-expanded="{{ 'true' if loop.first else 'false' }}">
+                    <strong>{{ quality }}</strong>
+                    <span class="badge bg-secondary ms-2">{{ episodes|length }} 个文件</span>
+                </button>
+            </h2>
+            <div id="collapse{{ loop.index }}"
+                 class="accordion-collapse collapse {% if loop.first %}show{% endif %}"
+                 data-bs-parent="#qualityAccordion">
+                <div class="accordion-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 50px;">序号</th>
+                                    <th style="max-width: 300px;">文件名</th>
+                                    <th style="width: 120px;">大小</th>
+                                    <th style="width: 120px;">日期</th>
+                                    <th style="width: 250px;">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for ep in episodes %}
+                                <tr>
+                                    <td>{{ loop.index }}</td>
+                                    <td>
+                                        <strong>{{ ep.zname }}</strong>
+                                        {% if ep.get('new') %}
+                                            <span class="badge bg-success ms-2">NEW</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ ep.zsize or '-' }}</td>
+                                    <td>{{ ep.ezt or '-' }}</td>
+                                    <td>
+                                        {% if ep.zlink %}
+                                        <a href="{{ ep.zlink }}" class="btn btn-sm btn-success me-1"
+                                           title="下载磁力链接">
+                                            磁力
+                                        </a>
+                                        {% if ep.zlink in active_magnets %}
+                                        <button class="btn btn-sm btn-secondary me-1" disabled
+                                                title="已在下载队列中">
+                                            下载中
+                                        </button>
+                                        {% else %}
+                                        <button class="btn btn-sm btn-primary me-1 qb-download-btn"
+                                                data-magnet="{{ ep.zlink }}"
+                                                data-doub-id="{{ magnet_data.doub_id }}"
+                                                data-title="{{ magnet_data.title }}"
+                                                data-year="{{ magnet_data.year }}"
+                                                data-image="{{ magnet_data.image }}"
+                                                data-episode-name="{{ ep.zname }}"
+                                                data-quality="{{ quality }}"
+                                                data-file-size="{{ ep.zsize }}"
+                                                title="发送到 qBittorrent 下载">
+                                            下载
+                                        </button>
+                                        {% endif %}
+                                        <button class="btn btn-sm btn-outline-secondary copy-btn"
+                                                data-magnet="{{ ep.zlink }}"
+                                                title="复制磁力链接">
+                                            复制
+                                        </button>
+                                        {% else %}
+                                        <span class="text-muted">无链接</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="alert alert-warning text-center">
+        没有找到磁力链接
+    </div>
+{% endif %}
+
+<div class="modal fade" id="copyModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">磁力链接</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-success d-none" id="copySuccess">
+                    已复制到剪贴板
+                </div>
+                <textarea class="form-control" id="magnetText" rows="5" readonly></textarea>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                <button type="button" class="btn btn-primary" id="copyBtn">复制链接</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="downloadSuccessModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">✓ 已添加到下载队列</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center py-4">
+                <p class="mb-3">任务已开始下载</p>
+                <a href="/downloads" class="btn btn-primary">前往下载管理</a>
+                <button type="button" class="btn btn-outline-secondary ms-2" data-bs-dismiss="modal">继续浏览</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // 复制磁力链接功能
+    document.querySelectorAll('.copy-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const magnet = this.getAttribute('data-magnet');
+            document.getElementById('magnetText').value = magnet;
+            document.getElementById('copySuccess').classList.add('d-none');
+
+            const modal = new bootstrap.Modal(document.getElementById('copyModal'));
+            modal.show();
+        });
+    });
+
+    document.getElementById('copyBtn').addEventListener('click', function() {
+        const magnetText = document.getElementById('magnetText');
+        magnetText.select();
+        document.execCommand('copy');
+
+        document.getElementById('copySuccess').classList.remove('d-none');
+        setTimeout(() => {
+            document.getElementById('copySuccess').classList.add('d-none');
+        }, 2000);
+    });
+
+    // qBittorrent 下载功能
+    document.querySelectorAll('.qb-download-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const episodeName = this.getAttribute('data-episode-name');
+            const quality = this.getAttribute('data-quality');
+
+            // 确认弹窗
+            if (!confirm(`确定要下载吗？\n\n文件：${episodeName}\n画质：${quality}`)) {
+                return;
+            }
+
+            const magnet = this.getAttribute('data-magnet');
+            const doubId = this.getAttribute('data-doub-id');
+            const title = this.getAttribute('data-title');
+            const year = this.getAttribute('data-year');
+            const image = this.getAttribute('data-image');
+            const fileSize = this.getAttribute('data-file-size');
+
+            const button = this;
+            const originalText = button.innerHTML;
+
+            button.disabled = true;
+            button.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span>';
+
+            // 构建表单数据
+            const formData = new URLSearchParams();
+            formData.append('magnet_url', magnet);
+            formData.append('doub_id', doubId);
+            formData.append('title', title);
+            formData.append('year', year);
+            formData.append('image', image);
+            formData.append('episode_name', episodeName);
+            formData.append('quality', quality);
+            formData.append('file_size', fileSize);
+
+            fetch('/api/add-torrent', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                body: formData.toString()
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    button.classList.replace('btn-primary', 'btn-success');
+                    button.innerHTML = '✓ 已添加';
+                    // 弹出成功提示
+                    const successModal = new bootstrap.Modal(document.getElementById('downloadSuccessModal'));
+                    successModal.show();
+                } else {
+                    button.classList.replace('btn-primary', 'btn-danger');
+                    button.innerHTML = '失败';
+                    alert(data.message);
+                    setTimeout(() => {
+                        button.classList.replace('btn-danger', 'btn-primary');
+                        button.innerHTML = originalText;
+                        button.disabled = false;
+                    }, 2000);
+                }
+            })
+            .catch(err => {
+                button.classList.replace('btn-primary', 'btn-danger');
+                button.innerHTML = '错误';
+                alert('请求失败: ' + err);
+                setTimeout(() => {
+                    button.classList.replace('btn-danger', 'btn-primary');
+                    button.innerHTML = originalText;
+                    button.disabled = false;
+                }, 2000);
+            });
+        });
+    });
+</script>
+{% endblock %}

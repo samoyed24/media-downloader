@@ -1,0 +1,410 @@
+{% extends "base.html" %}
+
+{% block title %}下载管理{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4>下载管理</h4>
+    <div>
+        <a href="/" class="btn btn-sm btn-outline-secondary me-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrow-left" viewBox="0 0 16 16">
+                <path fill-rule="evenodd" d="M15 8a.5.5 0 0 0-.5-.5H2.707l3.147-3.146a.5.5 0 1 0-.708-.708l-4 4a.5.5 0 0 0 0 .708l4 4a.5.5 0 0 0 .708-.708L2.707 8.5H14.5A.5.5 0 0 0 15 8z"/>
+            </svg>
+            返回搜索
+        </a>
+        <button class="btn btn-sm btn-outline-primary" onclick="location.reload()">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrow-clockwise" viewBox="0 0 16 16">
+                <path fill-rule="evenodd" d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z"/>
+                <path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"/>
+            </svg>
+            刷新
+        </button>
+    </div>
+</div>
+
+<div class="btn-group btn-group-sm mb-3" role="group">
+    <a href="{{ url_for('downloads', status='all') }}"
+       class="btn {% if current_status == 'all' %}btn-secondary{% else %}btn-outline-secondary{% endif %}">全部</a>
+    <a href="{{ url_for('downloads', status='downloading') }}"
+       class="btn {% if current_status == 'downloading' %}btn-primary{% else %}btn-outline-primary{% endif %}">下载中</a>
+    <a href="{{ url_for('downloads', status='completed') }}"
+       class="btn {% if current_status == 'completed' %}btn-success{% else %}btn-outline-success{% endif %}">已完成</a>
+    <a href="{{ url_for('downloads', status='deleted') }}"
+       class="btn {% if current_status == 'deleted' %}btn-danger{% else %}btn-outline-danger{% endif %}">已删除</a>
+</div>
+
+{% if downloads %}
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width: 80px;">海报</th>
+                        <th>影视信息</th>
+                        <th style="width: 100px;">画质</th>
+                        <th style="width: 150px;">进度</th>
+                        <th style="width: 120px;">速度</th>
+                        <th style="width: 120px;">添加时间</th>
+                        <th style="width: 280px; white-space: nowrap;">操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for download in downloads %}
+                    <tr data-record-id="{{ download.record_id }}" data-status="{{ download.status }}" data-active="{{ 'true' if download.is_active else 'false' }}">
+                        <td>
+                            {% if download.image %}
+                            <img src="/image-proxy?url={{ download.image|urlencode }}"
+                                 style="width: 60px; height: auto; border-radius: 4px;"
+                                 onerror="this.style.display='none'">
+                            {% else %}
+                            <div style="width: 60px; height: 90px; background: #ddd; border-radius: 4px;"></div>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <strong>{{ download.title }}</strong>
+                            {% if download.year %}
+                            <small class="text-muted">({{ download.year }})</small>
+                            {% endif %}
+                            <br>
+                            <small class="text-muted">{{ download.episode_name }}</small>
+                            {% if download.file_size %}
+                            <br><small class="text-muted">文件大小: {{ download.file_size }}</small>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="badge bg-info">{{ download.quality }}</span>
+                        </td>
+                        <td class="col-progress">
+                            {% if download.is_active %}
+                            <small class="d-block mb-1 progress-text">{{ "%.1f"|format(download.progress) }}%</small>
+                            <div class="progress" style="height: 8px;">
+                                <div class="progress-bar
+                                    {% if download.qb_status in ('pausedDL', 'pausedUP', 'stoppedDL', 'stoppedUP') %}bg-warning
+                                    {% elif download.progress >= 100 %}bg-success
+                                    {% else %}bg-primary
+                                    {% endif %}"
+                                    role="progressbar"
+                                    style="width: {{ download.progress }}%"
+                                    aria-valuenow="{{ download.progress }}"
+                                    aria-valuemin="0"
+                                    aria-valuemax="100">
+                                </div>
+                            </div>
+                            {% else %}
+                            <span class="badge status-badge
+                                {% if download.status == 'completed' %}bg-success
+                                {% elif download.status == 'downloading' %}bg-primary
+                                {% elif download.status == 'deleted' %}bg-danger
+                                {% else %}bg-secondary
+                                {% endif %}">
+                                {% if download.status == 'completed' %}已完成
+                                {% elif download.status == 'downloading' %}下载中
+                                {% elif download.status == 'paused' %}已暂停
+                                {% elif download.status == 'deleted' %}已删除
+                                {% else %}{{ download.status }}
+                                {% endif %}
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td class="col-speed">
+                            {% if download.is_active %}
+                            <small>
+                                ↓<span class="dl-speed">{{ download.dlspeed | filesizeformat }}</span>/s<br>
+                                ↑<span class="up-speed">{{ download.upspeed | filesizeformat }}</span>/s
+                            </small>
+                            {% else %}
+                            <small class="text-muted">-</small>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <small>{{ download.added_at }}</small>
+                        </td>
+                        <td class="col-actions" style="white-space: nowrap;">
+                            {% if download.is_active %}
+                                {% if download.qb_status in ('pausedDL', 'pausedUP', 'stoppedDL', 'stoppedUP') %}
+                                <button class="btn btn-sm btn-success resume-btn" data-hash="{{ download.torrent_hash }}" title="恢复">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-play-fill" viewBox="0 0 16 16">
+                                        <path d="m11.596 8.697-6.363 3.692c-.54.313-1.233-.066-1.233-.697V4.308c0-.63.692-1.01 1.233-.696l6.362 3.692a.802.802 0 0 1 0 1.393z"/>
+                                    </svg>
+                                </button>
+                                {% else %}
+                                <button class="btn btn-sm btn-warning pause-btn" data-hash="{{ download.torrent_hash }}" title="暂停">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-pause-fill" viewBox="0 0 16 16">
+                                        <path d="M5.5 3.5A1.5 1.5 0 0 1 7 5v6a1.5 1.5 0 0 1-3 0V5a1.5 1.5 0 0 1 1.5-1.5zm5 0A1.5 1.5 0 0 1 12 5v6a1.5 1.5 0 0 1-3 0V5a1.5 1.5 0 0 1 1.5-1.5z"/>
+                                    </svg>
+                                </button>
+                                {% endif %}
+                                <button class="btn btn-sm btn-danger delete-btn" data-hash="{{ download.torrent_hash }}" title="删除">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash-fill" viewBox="0 0 16 16">
+                                        <path d="M2.5 1a1 1 0 0 0-1 1v1a1 1 0 0 0 1 1H3v9a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V4h.5a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H10a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1H2.5zm3 4a.5.5 0 0 1 .5.5v7a.5.5 0 0 1-1 0v-7a.5.5 0 0 1 .5-.5zM8 5a.5.5 0 0 1 .5.5v7a.5.5 0 0 1-1 0v-7A.5.5 0 0 1 8 5zm3 .5v7a.5.5 0 0 1-1 0v-7a.5.5 0 0 1 1 0z"/>
+                                    </svg>
+                                </button>
+                            {% else %}
+                                {% if download.status == 'completed' %}
+                                    {% if download.jellyfin_synced %}
+                                    <span class="badge bg-info me-1">已推送</span>
+                                    {% else %}
+                                    <button class="btn btn-sm btn-info jellyfin-btn me-1"
+                                            data-record-id="{{ download.record_id }}"
+                                            title="推送到 Jellyfin">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-tv-fill" viewBox="0 0 16 16">
+                                            <path d="M2.5 13.5A.5.5 0 0 1 3 13h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zM16 2H0a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z"/>
+                                        </svg>
+                                        Jellyfin
+                                    </button>
+                                    {% endif %}
+                                {% endif %}
+                                <small class="text-muted">历史记录</small>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="alert alert-info text-center">
+    暂无下载记录
+</div>
+{% endif %}
+
+{% from "macros.html" import pagination %}
+{{ pagination(page, total, per_page, 'downloads', {'status': current_status}) }}
+
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">确认删除</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>确定要删除这个下载任务吗？</p>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="deleteFilesCheck">
+                    <label class="form-check-label" for="deleteFilesCheck">
+                        同时删除已下载的本地文件
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">删除</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // SVG 图标常量
+    const ICON_PLAY = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-play-fill" viewBox="0 0 16 16"><path d="m11.596 8.697-6.363 3.692c-.54.313-1.233-.066-1.233-.697V4.308c0-.63.692-1.01 1.233-.696l6.362 3.692a.802.802 0 0 1 0 1.393z"/></svg>';
+    const ICON_PAUSE = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-pause-fill" viewBox="0 0 16 16"><path d="M5.5 3.5A1.5 1.5 0 0 1 7 5v6a1.5 1.5 0 0 1-3 0V5a1.5 1.5 0 0 1 1.5-1.5zm5 0A1.5 1.5 0 0 1 12 5v6a1.5 1.5 0 0 1-3 0V5a1.5 1.5 0 0 1 1.5-1.5z"/></svg>';
+    const ICON_TRASH = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash-fill" viewBox="0 0 16 16"><path d="M2.5 1a1 1 0 0 0-1 1v1a1 1 0 0 0 1 1H3v9a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V4h.5a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H10a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1H2.5zm3 4a.5.5 0 0 1 .5.5v7a.5.5 0 0 1-1 0v-7a.5.5 0 0 1 .5-.5zM8 5a.5.5 0 0 1 .5.5v7a.5.5 0 0 1-1 0v-7A.5.5 0 0 1 8 5zm3 .5v7a.5.5 0 0 1-1 0v-7a.5.5 0 0 1 1 0z"/></svg>';
+
+    // 格式化文件大小
+    function formatSize(bytes) {
+        if (bytes === 0) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+    }
+
+    // 根据 qb_status 渲染操作按钮 HTML
+    function renderActions(hash, qbStatus) {
+        const isPaused = ['pausedDL', 'pausedUP', 'stoppedDL', 'stoppedUP'].includes(qbStatus);
+        const toggleBtn = isPaused
+            ? `<button class="btn btn-sm btn-success resume-btn" data-hash="${hash}" title="恢复">${ICON_PLAY}</button>`
+            : `<button class="btn btn-sm btn-warning pause-btn" data-hash="${hash}" title="暂停">${ICON_PAUSE}</button>`;
+        const deleteBtn = `<button class="btn btn-sm btn-danger delete-btn" data-hash="${hash}" title="删除">${ICON_TRASH}</button>`;
+        return toggleBtn + ' ' + deleteBtn;
+    }
+
+    // AJAX 局部刷新（每 3 秒）
+    function refreshDownloads() {
+        const params = new URLSearchParams(window.location.search);
+        const page = params.get('page') || 1;
+        const status = params.get('status') || 'all';
+
+        fetch(`/api/downloads?page=${page}&status=${status}`)
+            .then(r => r.json())
+            .then(data => {
+                data.downloads.forEach(item => {
+                    const row = document.querySelector(`tr[data-record-id="${item.record_id}"]`);
+                    if (!row) return;
+
+                    // 更新行状态属性
+                    row.dataset.status = item.status;
+                    row.dataset.active = item.is_active ? 'true' : 'false';
+
+                    const progressCell = row.querySelector('.col-progress');
+                    const speedCell = row.querySelector('.col-speed');
+                    const actionsCell = row.querySelector('.col-actions');
+                    if (!progressCell || !speedCell) return;
+
+                    if (item.is_active) {
+                        const pct = item.progress.toFixed(1);
+                        const barClass = ['pausedDL', 'pausedUP', 'stoppedDL', 'stoppedUP'].includes(item.qb_status)
+                            ? 'bg-warning' : (item.progress >= 100 ? 'bg-success' : 'bg-primary');
+                        progressCell.innerHTML = `
+                            <small class="d-block mb-1 progress-text">${pct}%</small>
+                            <div class="progress" style="height: 8px;">
+                                <div class="progress-bar ${barClass}" role="progressbar"
+                                    style="width: ${item.progress}%"></div>
+                            </div>`;
+                        speedCell.innerHTML = `<small>
+                            ↓<span class="dl-speed">${formatSize(item.dlspeed)}</span>/s<br>
+                            ↑<span class="up-speed">${formatSize(item.upspeed)}</span>/s
+                        </small>`;
+                        // 同步更新操作按钮（暂停/恢复状态切换）
+                        if (actionsCell) {
+                            actionsCell.innerHTML = renderActions(item.torrent_hash, item.qb_status);
+                        }
+                    } else {
+                        const statusMap = {
+                            'completed': ['bg-success', '已完成'],
+                            'deleted': ['bg-danger', '已删除'],
+                            'paused': ['bg-secondary', '已暂停'],
+                        };
+                        const [cls, label] = statusMap[item.status] || ['bg-secondary', item.status];
+                        progressCell.innerHTML = `<span class="badge status-badge ${cls}">${label}</span>`;
+                        speedCell.innerHTML = '<small class="text-muted">-</small>';
+                        if (actionsCell) {
+                            if (item.status === 'completed' && !item.jellyfin_synced) {
+                                actionsCell.innerHTML = `
+                                    <button class="btn btn-sm btn-info jellyfin-btn me-1"
+                                            data-record-id="${item.record_id}" title="推送到 Jellyfin">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-tv-fill" viewBox="0 0 16 16">
+                                            <path d="M2.5 13.5A.5.5 0 0 1 3 13h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zM16 2H0a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z"/>
+                                        </svg>
+                                        Jellyfin
+                                    </button>
+                                    <small class="text-muted">历史记录</small>`;
+                            } else if (item.status === 'completed' && item.jellyfin_synced) {
+                                actionsCell.innerHTML = '<span class="badge bg-info me-1">已推送</span><small class="text-muted">历史记录</small>';
+                            } else {
+                                actionsCell.innerHTML = '<small class="text-muted">历史记录</small>';
+                            }
+                        }
+                    }
+                });
+            })
+            .catch(() => {});
+    }
+    setInterval(refreshDownloads, 3000);
+
+    // 事件委托：统一处理暂停/恢复/删除按钮点击（动态替换的按钮也能响应）
+    document.querySelector('tbody').addEventListener('click', function(e) {
+        const pauseBtn = e.target.closest('.pause-btn');
+        const resumeBtn = e.target.closest('.resume-btn');
+        const deleteBtn = e.target.closest('.delete-btn');
+
+        if (pauseBtn) {
+            const hash = pauseBtn.getAttribute('data-hash');
+            pauseBtn.disabled = true;
+            fetch('/api/pause-torrent', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({hash: hash})
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (!data.success) {
+                    alert('暂停失败: ' + data.message);
+                    pauseBtn.disabled = false;
+                }
+                // 成功时不手动切换按钮，等下一次 AJAX 刷新自动更新
+            })
+            .catch(err => { alert('请求失败: ' + err); pauseBtn.disabled = false; });
+        }
+
+        if (resumeBtn) {
+            const hash = resumeBtn.getAttribute('data-hash');
+            resumeBtn.disabled = true;
+            fetch('/api/resume-torrent', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({hash: hash})
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (!data.success) {
+                    alert('恢复失败: ' + data.message);
+                    resumeBtn.disabled = false;
+                }
+            })
+            .catch(err => { alert('请求失败: ' + err); resumeBtn.disabled = false; });
+        }
+
+        if (deleteBtn) {
+            pendingDeleteHash = deleteBtn.getAttribute('data-hash');
+            document.getElementById('deleteFilesCheck').checked = false;
+            deleteModal.show();
+        }
+
+        const jellyfinBtn = e.target.closest('.jellyfin-btn');
+        if (jellyfinBtn) {
+            const recordId = jellyfinBtn.getAttribute('data-record-id');
+            jellyfinBtn.disabled = true;
+            fetch('/api/push-to-jellyfin', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({record_id: parseInt(recordId)})
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    jellyfinBtn.outerHTML = '<span class="badge bg-info me-1">已推送</span>';
+                } else {
+                    alert('推送失败: ' + data.message);
+                    jellyfinBtn.disabled = false;
+                }
+            })
+            .catch(err => {
+                alert('请求失败: ' + err);
+                jellyfinBtn.disabled = false;
+            });
+        }
+    });
+
+    // 删除功能 — 弹窗确认
+    let pendingDeleteHash = null;
+    const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+
+    document.getElementById('confirmDeleteBtn').addEventListener('click', function() {
+        if (!pendingDeleteHash) return;
+        const deleteFiles = document.getElementById('deleteFilesCheck').checked;
+        const btn = this;
+        btn.disabled = true;
+
+        fetch('/api/delete-torrent', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({hash: pendingDeleteHash, delete_files: deleteFiles})
+        })
+        .then(r => r.json())
+        .then(data => {
+            deleteModal.hide();
+            btn.disabled = false;
+            if (data.success) {
+                const row = document.querySelector(`tr[data-record-id] .delete-btn[data-hash="${pendingDeleteHash}"]`);
+                if (row) row.closest('tr').remove();
+            } else {
+                alert('删除失败: ' + data.message);
+            }
+            pendingDeleteHash = null;
+        })
+        .catch(err => {
+            deleteModal.hide();
+            btn.disabled = false;
+            alert('请求失败: ' + err);
+            pendingDeleteHash = null;
+        });
+    });
+</script>
+{% endblock %}

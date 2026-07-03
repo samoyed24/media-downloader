@@ -1,0 +1,31 @@
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*.so
+.Python
+
+# Runtime data
+downloads/
+qbittorrent_config/
+jellyfin_config/
+media/
+data/
+*.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Claude
+.claude/
+
+# Git
+.git/
+.gitignore
