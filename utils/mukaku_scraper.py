@@ -41,7 +41,7 @@ class MukakuScraper:
         for attempt in range(self.max_retries):
             self._throttle()
             try:
-                resp = self.session.get(url, params=params, timeout=30)
+                resp = self.session.get(url, params=params, timeout=5)
                 resp.raise_for_status()
             except requests.exceptions.HTTPError as e:
                 if resp.status_code in (502, 503, 504) and attempt < self.max_retries - 1:
