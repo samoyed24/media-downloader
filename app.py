@@ -14,6 +14,7 @@ from utils.qbittorrent_client import QBittorrentClient
 from utils.database import init_db, add_download_record, get_all_records, update_record_hash, update_record_status, get_active_magnet_urls, get_paginated_records, update_media_type, mark_jellyfin_synced
 from utils.jellyfin_mover import move_to_jellyfin, detect_media_type
 from utils.jellyfin_setup import init_jellyfin
+from utils.qbittorrent_setup import init_qbittorrent
 from datetime import datetime
 
 app = Flask(__name__)
@@ -25,6 +26,15 @@ qb_client = QBittorrentClient()
 
 # 初始化数据库
 init_db()
+
+# 在后台线程中初始化 qBittorrent（不阻塞 Flask 启动）
+def _init_qbittorrent_bg():
+    try:
+        init_qbittorrent()
+    except Exception as e:
+        print(f"qBittorrent 初始化异常: {e}")
+
+threading.Thread(target=_init_qbittorrent_bg, daemon=True).start()
 
 # 在后台线程中初始化 Jellyfin（不阻塞 Flask 启动）
 def _init_jellyfin_bg():
@@ -119,11 +129,16 @@ def image_proxy():
 def _merge_with_qbittorrent(records):
     """将数据库记录与 qBittorrent 实时数据合并"""
     qb_torrents, err = qb_client.list_torrents()
-    if err:
+    qb_connection_failed = err is not None
+
+    if qb_connection_failed:
+        # qBittorrent 连接失败，返回原始记录状态
         qb_torrents = []
+        qb_hash_map = {}
+    else:
+        qb_hash_map = {t['hash']: t for t in qb_torrents}
 
     downloads_data = []
-    qb_hash_map = {t['hash']: t for t in qb_torrents}
 
     for record in records:
         download_info = {
@@ -144,8 +159,20 @@ def _merge_with_qbittorrent(records):
             'jellyfin_synced': bool(record.get('jellyfin_synced', 0)),
         }
 
+        # qBittorrent 连接失败时，不修改状态，只显示原始数据
+        if qb_connection_failed:
+            download_info.update({
+                'progress': 0,
+                'dlspeed': 0,
+                'upspeed': 0,
+                'eta': 0,
+                'size': 0,
+                'downloaded': 0,
+                'qb_status': 'qb_connection_failed',
+                'is_active': record['status'] == 'downloading',
+            })
         # 只匹配正在进行中的记录，已删除/已完成的记录不再关联 qBittorrent
-        if (record['torrent_hash']
+        elif (record['torrent_hash']
                 and record['status'] not in ('deleted', 'completed')
                 and record['torrent_hash'] in qb_hash_map):
             qb_data = qb_hash_map[record['torrent_hash']]
@@ -163,7 +190,7 @@ def _merge_with_qbittorrent(records):
                 update_record_status(record['id'], 'completed', datetime.now())
                 download_info['status'] = 'completed'
         else:
-            # 不在 qBittorrent 中了（被删除或已完成），或记录本身已是终态
+            # qBittorrent 连接正常，但任务不在列表中（被删除或已完成）
             if record['status'] == 'downloading':
                 # 之前在下载中但现在没了，说明被删除了
                 update_record_status(record['id'], 'deleted')

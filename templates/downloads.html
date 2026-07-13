@@ -418,8 +418,36 @@
             deleteModal.hide();
             btn.disabled = false;
             if (data.success) {
-                const row = document.querySelector(`tr[data-record-id] .delete-btn[data-hash="${pendingDeleteHash}"]`);
-                if (row) row.closest('tr').remove();
+                // 找到对应的行
+                const deleteBtn = document.querySelector(`.delete-btn[data-hash="${pendingDeleteHash}"]`);
+                if (deleteBtn) {
+                    const row = deleteBtn.closest('tr');
+                    // 更新行状态为已删除
+                    row.dataset.status = 'deleted';
+                    row.dataset.active = 'false';
+
+                    const progressCell = row.querySelector('.col-progress');
+                    const sizeCell = row.querySelector('.col-size');
+                    const speedCell = row.querySelector('.col-speed');
+                    const actionsCell = row.querySelector('.col-actions');
+
+                    // 更新进度列为"已删除"状态
+                    if (progressCell) {
+                        progressCell.innerHTML = '<span class="badge status-badge bg-danger">已删除</span>';
+                    }
+                    // 更新大小和速度列
+                    if (sizeCell) {
+                        const fileSize = row.querySelector('small.text-muted')?.textContent || '-';
+                        sizeCell.innerHTML = `<small class="text-muted">${fileSize}</small>`;
+                    }
+                    if (speedCell) {
+                        speedCell.innerHTML = '<small class="text-muted">-</small>';
+                    }
+                    // 更新操作列
+                    if (actionsCell) {
+                        actionsCell.innerHTML = '<small class="text-muted">历史记录</small>';
+                    }
+                }
             } else {
                 alert('删除失败: ' + data.message);
             }

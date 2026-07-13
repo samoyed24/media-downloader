@@ -27,9 +27,63 @@
             </div>
             {% endif %}
             <div class="{{ 'col-md-9' if magnet_data.image else 'col-12' }}">
-                <p class="mb-0">
-                    <strong>ID:</strong> {{ magnet_data.doub_id }}
+                <div class="row mb-2">
+                    <div class="col-auto">
+                        <strong>ID:</strong> {{ magnet_data.doub_id }}
+                    </div>
+                    {% if magnet_data.doub_score and magnet_data.doub_score != '0' and magnet_data.doub_score != 0 %}
+                    <div class="col-auto">
+                        <strong>豆瓣评分:</strong>
+                        <span class="text-warning">{{ magnet_data.doub_score }}</span>
+                        {% if magnet_data.doub_score_peo_num %}
+                        <small class="text-muted">({{ magnet_data.doub_score_peo_num }}人)</small>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                    {% if magnet_data.IMDB_score and magnet_data.IMDB_score != '0' and magnet_data.IMDB_score != 0 %}
+                    <div class="col-auto">
+                        <strong>IMDB:</strong>
+                        <span class="text-warning">{{ magnet_data.IMDB_score }}</span>
+                        {% if magnet_data.IMDB_score_peo_num %}
+                        <small class="text-muted">({{ magnet_data.IMDB_score_peo_num }}人)</small>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+
+                {% if magnet_data.class or magnet_data.production_area or magnet_data.years %}
+                <p class="mb-1">
+                    {% if magnet_data.production_area %}
+                    <span class="badge bg-info">{{ magnet_data.production_area }}</span>
+                    {% endif %}
+                    {% if magnet_data.years %}
+                    <span class="badge bg-secondary">{{ magnet_data.years }}</span>
+                    {% endif %}
+                    {% if magnet_data.class %}
+                    <span class="badge bg-secondary">{{ magnet_data.class }}</span>
+                    {% endif %}
+                    {% if magnet_data.episodes %}
+                    <span class="badge bg-secondary">共{{ magnet_data.episodes }}集</span>
+                    {% endif %}
                 </p>
+                {% endif %}
+
+                {% if magnet_data.director or magnet_data.performer %}
+                <p class="mb-1 small">
+                    {% if magnet_data.director %}
+                    <strong>导演:</strong> {{ magnet_data.director }}<br>
+                    {% endif %}
+                    {% if magnet_data.performer %}
+                    <strong>主演:</strong> {{ magnet_data.performer[:100] }}{% if magnet_data.performer|length > 100 %}...{% endif %}
+                    {% endif %}
+                </p>
+                {% endif %}
+
+                {% if magnet_data.abstract %}
+                <p class="mb-0 small text-muted">
+                    <strong>简介:</strong> {{ magnet_data.abstract[:200] }}{% if magnet_data.abstract|length > 200 %}...{% endif %}
+                </p>
+                {% endif %}
             </div>
         </div>
     </div>

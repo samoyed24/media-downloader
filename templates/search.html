@@ -77,7 +77,7 @@
                                 </td>
                                 <td>{{ video.years or '-' }}</td>
                                 <td>
-                                    {% if video.doub_score %}
+                                    {% if video.doub_score and video.doub_score != '0' and video.doub_score != 0 %}
                                         <span class="text-warning">{{ video.doub_score }}</span>
                                     {% else %}
                                         -

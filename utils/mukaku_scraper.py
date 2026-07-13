@@ -73,7 +73,7 @@ class MukakuScraper:
         return data.get("data", {})
 
     def get_magnets(self, doub_id: int) -> dict:
-        """获取磁力链接，按画质分组"""
+        """获取磁力链接，按画质分组，包含影视详情"""
         detail = self.get_detail(doub_id)
         ecca = detail.get("ecca", {})
         return {
@@ -82,5 +82,17 @@ class MukakuScraper:
             "doub_id": doub_id,
             "image": detail.get("image"),
             "quality_groups": ecca,
+            # 影视详情
+            "doub_score": detail.get("doub_score"),
+            "doub_score_peo_num": detail.get("doub_score_peo_num"),
+            "IMDB_score": detail.get("IMDB_score"),
+            "IMDB_score_peo_num": detail.get("IMDB_score_peo_num"),
+            "abstract": detail.get("abstract"),
+            "director": detail.get("director"),
+            "performer": detail.get("performer"),
+            "class": detail.get("class"),
+            "production_area": detail.get("production_area"),
+            "episodes": detail.get("episodes"),
+            "language": detail.get("language"),
         }
 
