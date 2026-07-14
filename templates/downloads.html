@@ -81,7 +81,7 @@
                             <small class="d-block mb-1 progress-text">{{ "%.1f"|format(download.progress) }}%</small>
                             <div class="progress" style="height: 8px;">
                                 <div class="progress-bar
-                                    {% if download.qb_status in ('pausedDL', 'pausedUP', 'stoppedDL', 'stoppedUP') %}bg-warning
+                                    {% if download.qb_status == 'paused' %}bg-warning
                                     {% elif download.progress >= 100 %}bg-success
                                     {% else %}bg-primary
                                     {% endif %}"
@@ -135,7 +135,7 @@
                         </td>
                         <td class="col-actions" style="width: 220px; white-space: nowrap;">
                             {% if download.is_active %}
-                                {% if download.qb_status in ('pausedDL', 'pausedUP', 'stoppedDL', 'stoppedUP') %}
+                                {% if download.qb_status == 'paused' %}
                                 <button class="btn btn-sm btn-success resume-btn" data-hash="{{ download.torrent_hash }}" title="恢复">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-play-fill" viewBox="0 0 16 16">
                                         <path d="m11.596 8.697-6.363 3.692c-.54.313-1.233-.066-1.233-.697V4.308c0-.63.692-1.01 1.233-.696l6.362 3.692a.802.802 0 0 1 0 1.393z"/>
@@ -228,9 +228,9 @@
         return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
     }
 
-    // 根据 qb_status 渲染操作按钮 HTML
-    function renderActions(hash, qbStatus) {
-        const isPaused = ['pausedDL', 'pausedUP', 'stoppedDL', 'stoppedUP'].includes(qbStatus);
+    // 根据状态渲染操作按钮 HTML
+    function renderActions(hash, status) {
+        const isPaused = status === 'paused';
         const toggleBtn = isPaused
             ? `<button class="btn btn-sm btn-success resume-btn" data-hash="${hash}" title="恢复">${ICON_PLAY}</button>`
             : `<button class="btn btn-sm btn-warning pause-btn" data-hash="${hash}" title="暂停">${ICON_PAUSE}</button>`;
@@ -263,8 +263,7 @@
 
                     if (item.is_active) {
                         const pct = item.progress.toFixed(1);
-                        const barClass = ['pausedDL', 'pausedUP', 'stoppedDL', 'stoppedUP'].includes(item.qb_status)
-                            ? 'bg-warning' : (item.progress >= 100 ? 'bg-success' : 'bg-primary');
+                        const barClass = item.qb_status === 'paused' ? 'bg-warning' : (item.progress >= 100 ? 'bg-success' : 'bg-primary');
                         progressCell.innerHTML = `
                             <small class="d-block mb-1 progress-text">${pct}%</small>
                             <div class="progress" style="height: 8px;">
@@ -291,6 +290,7 @@
                             'completed': ['bg-success', '已完成'],
                             'deleted': ['bg-danger', '已删除'],
                             'paused': ['bg-secondary', '已暂停'],
+                            'error': ['bg-danger', '错误'],
                         };
                         const [cls, label] = statusMap[item.status] || ['bg-secondary', item.status];
                         progressCell.innerHTML = `<span class="badge status-badge ${cls}">${label}</span>`;

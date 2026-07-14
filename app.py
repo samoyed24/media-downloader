@@ -10,11 +10,10 @@ import re
 import time
 import threading
 from utils.mukaku_scraper import MukakuScraper
-from utils.qbittorrent_client import QBittorrentClient
+from utils.aria2_client import Aria2Client
 from utils.database import init_db, add_download_record, get_all_records, update_record_hash, update_record_status, get_active_magnet_urls, get_paginated_records, update_media_type, mark_jellyfin_synced
 from utils.jellyfin_mover import move_to_jellyfin, detect_media_type
 from utils.jellyfin_setup import init_jellyfin
-from utils.qbittorrent_setup import init_qbittorrent
 from datetime import datetime
 
 app = Flask(__name__)
@@ -22,19 +21,10 @@ app.secret_key = 'mukaku-web-tool-2024'  # 用于 flash 消息
 
 # 创建全局 scraper 实例，减少延迟以提高响应速度
 scraper = MukakuScraper(delay=3, max_retries=3)
-qb_client = QBittorrentClient()
+aria2_client = Aria2Client()
 
 # 初始化数据库
 init_db()
-
-# 在后台线程中初始化 qBittorrent（不阻塞 Flask 启动）
-def _init_qbittorrent_bg():
-    try:
-        init_qbittorrent()
-    except Exception as e:
-        print(f"qBittorrent 初始化异常: {e}")
-
-threading.Thread(target=_init_qbittorrent_bg, daemon=True).start()
 
 # 在后台线程中初始化 Jellyfin（不阻塞 Flask 启动）
 def _init_jellyfin_bg():
@@ -126,17 +116,16 @@ def image_proxy():
         return Response(f'Image load failed: {str(e)}', status=500)
 
 
-def _merge_with_qbittorrent(records):
-    """将数据库记录与 qBittorrent 实时数据合并"""
-    qb_torrents, err = qb_client.list_torrents()
-    qb_connection_failed = err is not None
+def _merge_with_aria2(records):
+    """将数据库记录与 aria2 实时数据合并"""
+    aria2_torrents, err = aria2_client.list_torrents()
+    aria2_connection_failed = err is not None
 
-    if qb_connection_failed:
-        # qBittorrent 连接失败，返回原始记录状态
-        qb_torrents = []
-        qb_hash_map = {}
+    if aria2_connection_failed:
+        aria2_torrents = []
+        aria2_hash_map = {}
     else:
-        qb_hash_map = {t['hash']: t for t in qb_torrents}
+        aria2_hash_map = {t['gid']: t for t in aria2_torrents}
 
     downloads_data = []
 
@@ -159,8 +148,8 @@ def _merge_with_qbittorrent(records):
             'jellyfin_synced': bool(record.get('jellyfin_synced', 0)),
         }
 
-        # qBittorrent 连接失败时，不修改状态，只显示原始数据
-        if qb_connection_failed:
+        # aria2 连接失败时，不修改状态
+        if aria2_connection_failed:
             download_info.update({
                 'progress': 0,
                 'dlspeed': 0,
@@ -168,31 +157,30 @@ def _merge_with_qbittorrent(records):
                 'eta': 0,
                 'size': 0,
                 'downloaded': 0,
-                'qb_status': 'qb_connection_failed',
+                'qb_status': 'aria2_connection_failed',
                 'is_active': record['status'] == 'downloading',
             })
-        # 只匹配正在进行中的记录，已删除/已完成的记录不再关联 qBittorrent
+        # 匹配正在进行的记录
         elif (record['torrent_hash']
                 and record['status'] not in ('deleted', 'completed')
-                and record['torrent_hash'] in qb_hash_map):
-            qb_data = qb_hash_map[record['torrent_hash']]
+                and record['torrent_hash'] in aria2_hash_map):
+            aria2_data = aria2_hash_map[record['torrent_hash']]
             download_info.update({
-                'progress': qb_data['progress'],
-                'dlspeed': qb_data['dlspeed'],
-                'upspeed': qb_data['upspeed'],
-                'eta': qb_data['eta'],
-                'size': qb_data['size'],
-                'downloaded': qb_data['downloaded'],
-                'qb_status': qb_data['state'],
+                'progress': aria2_data['progress'],
+                'dlspeed': aria2_data['dlspeed'],
+                'upspeed': aria2_data['upspeed'],
+                'eta': aria2_data['eta'],
+                'size': aria2_data['size'],
+                'downloaded': aria2_data['downloaded'],
+                'qb_status': aria2_data['state'],
                 'is_active': True,
             })
-            if qb_data['progress'] >= 100 and record['status'] != 'completed':
+            if aria2_data['progress'] >= 100 and record['status'] != 'completed':
                 update_record_status(record['id'], 'completed', datetime.now())
                 download_info['status'] = 'completed'
         else:
-            # qBittorrent 连接正常，但任务不在列表中（被删除或已完成）
+            # aria2 连接正常，但任务不在列表中
             if record['status'] == 'downloading':
-                # 之前在下载中但现在没了，说明被删除了
                 update_record_status(record['id'], 'deleted')
                 record['status'] = 'deleted'
             download_info.update({
@@ -219,7 +207,7 @@ def downloads():
     per_page = 20
 
     records, total = get_paginated_records(page=page, per_page=per_page, status=status)
-    downloads_data = _merge_with_qbittorrent(records)
+    downloads_data = _merge_with_aria2(records)
 
     return render_template(
         'downloads.html',
@@ -239,7 +227,7 @@ def api_downloads():
     per_page = 20
 
     records, total = get_paginated_records(page=page, per_page=per_page, status=status)
-    downloads_data = _merge_with_qbittorrent(records)
+    downloads_data = _merge_with_aria2(records)
 
     return jsonify({
         'downloads': downloads_data,
@@ -265,8 +253,8 @@ def add_torrent():
     if not magnet_url:
         return jsonify({'success': False, 'message': '无磁力链接'}), 400
 
-    # 添加到 qBittorrent
-    ok, err = qb_client.add_magnet(magnet_url)
+    # 添加到 aria2
+    ok, err = aria2_client.add_magnet(magnet_url)
     if not ok:
         return jsonify({'success': False, 'message': err}), 500
 
@@ -282,28 +270,8 @@ def add_torrent():
         file_size=file_size or ''
     )
 
-    # 从磁力链接提取 info hash
-    hash_match = re.search(r'btih:([a-fA-F0-9]{40})', magnet_url, re.IGNORECASE)
-    if not hash_match:
-        hash_match = re.search(r'xt=urn:btih:([a-zA-Z0-9]+)', magnet_url)
-    magnet_hash = hash_match.group(1).lower() if hash_match else None
-
-    # 等待 torrent 出现在 qBittorrent 列表中，然后匹配 hash
-    torrent_hash = None
-    for _ in range(5):
-        time.sleep(1)
-        torrents, _ = qb_client.list_torrents()
-        if torrents:
-            for torrent in torrents:
-                # 直接匹配 hash
-                if magnet_hash and torrent['hash'].lower() == magnet_hash:
-                    torrent_hash = torrent['hash']
-                    break
-            if torrent_hash:
-                break
-
-    if torrent_hash:
-        update_record_hash(record_id, torrent_hash)
+    # aria2 使用 magnet URL 作为唯一标识
+    update_record_hash(record_id, magnet_url)
 
     return jsonify({'success': True, 'message': '已添加到下载队列', 'record_id': record_id})
 
@@ -316,7 +284,7 @@ def pause_torrent():
     if not torrent_hash:
         return jsonify({'success': False, 'message': '无效的 hash'}), 400
 
-    ok, err = qb_client.pause_torrent(torrent_hash)
+    ok, err = aria2_client.pause_torrent(torrent_hash)
     if ok:
         return jsonify({'success': True, 'message': '已暂停'})
     return jsonify({'success': False, 'message': err}), 500
@@ -330,7 +298,7 @@ def resume_torrent():
     if not torrent_hash:
         return jsonify({'success': False, 'message': '无效的 hash'}), 400
 
-    ok, err = qb_client.resume_torrent(torrent_hash)
+    ok, err = aria2_client.resume_torrent(torrent_hash)
     if ok:
         return jsonify({'success': True, 'message': '已恢复'})
     return jsonify({'success': False, 'message': err}), 500
@@ -346,7 +314,7 @@ def delete_torrent():
     if not torrent_hash:
         return jsonify({'success': False, 'message': '无效的 hash'}), 400
 
-    ok, err = qb_client.delete_torrent(torrent_hash, delete_files)
+    ok, err = aria2_client.delete_torrent(torrent_hash, delete_files)
     if ok:
         return jsonify({'success': True, 'message': '已删除'})
     return jsonify({'success': False, 'message': err}), 500
@@ -389,7 +357,7 @@ if __name__ == '__main__':
     print("=" * 60)
     print("  影视磁力链接搜索工具 - Web 版")
     print("  访问: http://127.0.0.1:5000")
-    print("  qBittorrent: http://127.0.0.1:8080")
     print("  Jellyfin: http://127.0.0.1:8096")
+    print("  aria2: 内置在容器中")
     print("=" * 60)
     app.run(debug=True, host='0.0.0.0', port=5000, threaded=True, use_reloader=False)

@@ -5,10 +5,6 @@ services:
     ports:
       - "${WEB_PORT:-5001}:5000"
     environment:
-      # qBittorrent 配置
-      - QB_HOST=http://qbittorrent:8080
-      - QB_USERNAME=${QB_USERNAME:-admin}
-      - QB_PASSWORD=${QB_PASSWORD}
       # Jellyfin 配置
       - JELLYFIN_URL=http://jellyfin:8096
       - JELLYFIN_USERNAME=${JELLYFIN_USERNAME:-admin}
@@ -23,26 +19,7 @@ services:
       - ${DATA_PATH:-./data}:/app/data
       - ${MEDIA_PATH:-./media}:/media
     depends_on:
-      - qbittorrent
       - jellyfin
-    restart: unless-stopped
-
-  qbittorrent:
-    image: lscr.io/linuxserver/qbittorrent:latest
-    container_name: qbittorrent
-    environment:
-      - PUID=1000
-      - PGID=1000
-      - TZ=Asia/Shanghai
-      - WEBUI_PORT=8080
-      # qBittorrent Web UI 登录凭据（首次启动时使用）
-      - WEBUI_USERNAME=${QB_USERNAME:-admin}
-      - WEBUI_PASSWORD=${QB_PASSWORD}
-    ports:
-      - "${QB_PORT:-8080}:8080"
-    volumes:
-      - ${QB_CONFIG_PATH:-./qbittorrent_config}:/config
-      - ${DOWNLOAD_PATH:-./downloads}:/downloads
     restart: unless-stopped
 
   jellyfin:
