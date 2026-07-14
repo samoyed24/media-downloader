@@ -37,6 +37,11 @@ class Aria2Client:
         # 启动 aria2c 守护进程
         try:
             os.makedirs(self.download_path, exist_ok=True)
+            os.makedirs('/app/data', exist_ok=True)
+            session_file = '/app/data/aria2_session.txt'
+            if not os.path.exists(session_file):
+                open(session_file, 'a').close()
+
             cmd = [
                 'aria2c',
                 f'--dir={self.download_path}',
@@ -55,18 +60,20 @@ class Aria2Client:
                 '--max-connection-per-server=16',
                 '--bt-max-peers=100',
                 '--seed-ratio=0',
-                '--save-session=/app/data/aria2_session.txt',
+                f'--save-session={session_file}',
                 '--save-session-interval=60',
-                '--input-file=/app/data/aria2_session.txt',
+                f'--input-file={session_file}',
             ]
 
             if self.rpc_secret:
                 cmd.append(f'--rpc-secret={self.rpc_secret}')
 
-            subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=5)
+            if result.returncode != 0:
+                print(f"aria2c 启动失败: {result.stderr}")
             time.sleep(2)  # 等待启动
         except Exception as e:
-            print(f"启动 aria2c 失败: {e}")
+            print(f"启动 aria2c 异常: {e}")
 
     def _rpc_call(self, method, params=None):
         """调用 aria2 JSON-RPC"""
