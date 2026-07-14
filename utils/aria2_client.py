@@ -106,8 +106,8 @@ class Aria2Client:
         options = {'dir': save_path}
         result, err = self._rpc_call('aria2.addUri', [[magnet_url], options])
         if err:
-            return False, err
-        return True, None
+            return None, err
+        return result, None
 
     def list_torrents(self):
         """获取所有下载任务列表"""

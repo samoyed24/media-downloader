@@ -254,8 +254,8 @@ def add_torrent():
         return jsonify({'success': False, 'message': '无磁力链接'}), 400
 
     # 添加到 aria2
-    ok, err = aria2_client.add_magnet(magnet_url)
-    if not ok:
+    gid, err = aria2_client.add_magnet(magnet_url)
+    if not gid:
         return jsonify({'success': False, 'message': err}), 500
 
     # 创建数据库记录
@@ -270,8 +270,8 @@ def add_torrent():
         file_size=file_size or ''
     )
 
-    # aria2 使用 magnet URL 作为唯一标识
-    update_record_hash(record_id, magnet_url)
+    # aria2 使用 gid 作为唯一标识
+    update_record_hash(record_id, gid)
 
     return jsonify({'success': True, 'message': '已添加到下载队列', 'record_id': record_id})
 
